@@ -9,8 +9,8 @@ st.title('💼 Startup Profit Predictor')
 
 st.info('Predict the **Profit** based on startup data using Multiple Linear Regression.')
 
-# Load data
-df = pd.read_csv('/mnt/data/50_Startups (1).csv')
+# Load data from URL
+df = pd.read_csv('https://raw.githubusercontent.com/Bahsobi/sii_project/main/50_Startups%20(1).csv')
 
 with st.expander('Data Overview'):
     st.write(df)
