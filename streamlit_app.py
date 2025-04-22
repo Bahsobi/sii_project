@@ -1,9 +1,3 @@
-!pip install streamlit numpy pandas scikit-learn matplotlib
-!pip install pyngrok  # Only needed if running in Colab
-
-
-
-
 import streamlit as st
 import numpy as np
 import pandas as pd
