@@ -149,10 +149,15 @@ probability = model.predict_proba(user_input)[0][1]
 
 # ---------- Display Result ----------
 st.subheader("🔍 Infertility Prediction")
+odds_value = probability / (1 - probability)
+
 if prediction == 1:
     st.error(f"⚠️ Predicted: *Infertile* with probability {probability:.2%}")
 else:
-    st.success(f"✅ Predicted: *Not Infertile* with probability {1 - probability:.2%}")
+    st.success(f"✅ Predicted: *Not Infertile* with probability {(1 - probability):.2%}")
+
+st.markdown(f"🧮 **Odds of Female Infertility (based on ML model):** `{odds_value:.2f}`")
+
 
 # ---------- Show Odds Ratios Table ----------
 st.subheader("📊 Odds Ratios for Infertility (Logistic Regression) (Excluding Race)")
