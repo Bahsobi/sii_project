@@ -156,22 +156,52 @@ if prediction == 1:
 else:
     st.success(f"✅ Predicted: *Not Infertile* with probability {(1 - probability):.2%}")
 
-# --- فقط بررسی تاثیر SSI ---
-# داده‌های پایه (میانگین یا پیش‌فرض)
-baseline_input = pd.DataFrame([{
-    'SSI': ssi,
+
+
+
+
+# --- Odds Ratio based on SSI ---
+
+# مقدار SSI کاربر و مقدار مرجع (میانگین)
+ssi_user = ssi
+ssi_ref = df['SSI'].mean()
+
+# ساخت دو ورودی مشابه فقط با تغییر SSI
+input_user_ssi = pd.DataFrame([{
+    'SSI': ssi_user,
     'age': df['age'].mean(),
     'BMI': df['BMI'].mean(),
     'waist_circumference': df['waist_circumference'].mean(),
-    'race': 'Non-Hispanic White',  # رایج‌ترین نژاد یا پیش‌فرض
+    'race': 'Non-Hispanic White',
     'hyperlipidemia': 'No',
     'diabetes': 'No'
 }])
 
-# محاسبه احتمال و شانس فقط بر اساس SSI
-ssi_prob = model.predict_proba(baseline_input)[0][1]
-ssi_odds = ssi_prob / (1 - ssi_prob)
-st.markdown(f"📌 **Odds of Infertility based on SSI only:** `{ssi_odds:.2f}` (probability = {ssi_prob:.2%})")
+input_ref_ssi = input_user_ssi.copy()
+input_ref_ssi['SSI'] = ssi_ref
+
+# پیش‌بینی احتمال
+prob_user = model.predict_proba(input_user_ssi)[0][1]
+prob_ref = model.predict_proba(input_ref_ssi)[0][1]
+
+# محاسبه odds و odds ratio
+odds_user = prob_user / (1 - prob_user)
+odds_ref = prob_ref / (1 - prob_ref)
+ssi_odds_ratio = odds_user / odds_ref
+
+st.markdown(f"🧮 **Odds Ratio of Infertility for SSI = {ssi_user} vs average SSI ({ssi_ref:.1f}):** `{ssi_odds_ratio:.2f}`")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
