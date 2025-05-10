@@ -1,51 +1,86 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import Pipeline
+from xgboost import XGBClassifier
 
-st.title('💼 Startup Profit Predictor')
+# عنوان
+st.title("🤰 پیش‌بینی ناباروری با XGBoost")
 
-st.info('Predict the **Profit** based on startup data using Multiple Linear Regression.')
+# بارگذاری داده‌ها
+@st.cache_data
+def load_data():
+    return pd.read_csv("/mnt/data/MY_ ssi.csv")
 
-# Load data from URL
-df = pd.read_csv('https://raw.githubusercontent.com/Bahsobi/sii_project/main/50_Startups%20(1).csv')
+df = load_data()
 
-with st.expander('Data Overview'):
-    st.write(df)
+st.subheader("نمایش داده‌های اولیه")
+st.dataframe(df.head())
 
-# Preprocess X and y
-X_raw = df.drop('Profit', axis=1)
-y = df['Profit']
+# انتخاب ویژگی‌ها و هدف
+features = ['SSI', 'age', 'BMI', 'waist circumference', 'race', 'hyperlipidemia', 'diabetes']
+target = 'infertility'
 
-# Encode the 'State' column
-ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), ['State'])], remainder='passthrough')
-X_encoded = ct.fit_transform(X_raw)
+# حذف مقادیر گمشده
+df = df[features + [target]].dropna()
 
-# Train the model
-regressor = LinearRegression()
-regressor.fit(X_encoded, y)
+X = df[features]
+y = df[target]
 
-# Input section
-with st.sidebar:
-    st.header('Enter Startup Details')
+# پیش‌پردازش
+categorical_features = ['race', 'hyperlipidemia', 'diabetes']
+numerical_features = ['SSI', 'age', 'BMI', 'waist circumference']
 
-    state = st.selectbox('State', df['State'].unique())
-    rnd_spend = st.number_input('R&D Spend', value=0.0)
-    admin = st.number_input('Administration', value=0.0)
-    marketing = st.number_input('Marketing Spend', value=0.0)
+preprocessor = ColumnTransformer([
+    ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
+    ('num', StandardScaler(), numerical_features)
+])
 
-    # Create a DataFrame for the input
-    input_data = pd.DataFrame([[state, rnd_spend, admin, marketing]],
-                              columns=['State', 'R&D Spend', 'Administration', 'Marketing Spend'])
+# ساخت مدل نهایی
+model = Pipeline([
+    ('prep', preprocessor),
+    ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss'))
+])
 
-    # Encode input
-    input_encoded = ct.transform(input_data)
+# آموزش مدل
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
+model.fit(X_train, y_train)
 
-# Make prediction
-prediction = regressor.predict(input_encoded)
+# فرم ورودی کاربر
+st.sidebar.header("📝 وارد کردن اطلاعات فردی")
 
-# Display result
-st.subheader('📈 Predicted Profit')
-st.success(f"${prediction[0]:,.2f}")
+ssi = st.sidebar.number_input("SSI", min_value=0.0, value=10.0)
+age = st.sidebar.number_input("Age", min_value=15, max_value=60, value=30)
+bmi = st.sidebar.number_input("BMI", min_value=10.0, max_value=50.0, value=25.0)
+waist = st.sidebar.number_input("Waist Circumference", min_value=40.0, max_value=150.0, value=80.0)
+
+race_options = sorted(df['race'].dropna().unique())
+race = st.sidebar.selectbox("Race", race_options)
+
+hyperlipidemia = st.sidebar.selectbox("Hyperlipidemia", ['Yes', 'No'])
+diabetes = st.sidebar.selectbox("Diabetes", ['Yes', 'No'])
+
+# آماده‌سازی ورودی برای پیش‌بینی
+user_input = pd.DataFrame([{
+    'SSI': ssi,
+    'age': age,
+    'BMI': bmi,
+    'waist circumference': waist,
+    'race': race,
+    'hyperlipidemia': hyperlipidemia,
+    'diabetes': diabetes
+}])
+
+# پیش‌بینی
+prediction = model.predict(user_input)[0]
+probability = model.predict_proba(user_input)[0][1]
+
+# نمایش نتیجه
+st.subheader("🔍 پیش‌بینی ناباروری")
+if prediction == 1:
+    st.error(f"⚠️ پیش‌بینی شده: *ناباروری* با احتمال {probability:.2%}")
+else:
+    st.success(f"✅ پیش‌بینی شده: *عدم ناباروری* با احتمال {1 - probability:.2%}")
