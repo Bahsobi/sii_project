@@ -156,7 +156,26 @@ if prediction == 1:
 else:
     st.success(f"✅ Predicted: *Not Infertile* with probability {(1 - probability):.2%}")
 
-st.markdown(f"🧮 **Odds of Female Infertility (based on ML model):** `{odds_value:.2f}`")
+# --- فقط بررسی تاثیر SSI ---
+# داده‌های پایه (میانگین یا پیش‌فرض)
+baseline_input = pd.DataFrame([{
+    'SSI': ssi,
+    'age': df['age'].mean(),
+    'BMI': df['BMI'].mean(),
+    'waist_circumference': df['waist_circumference'].mean(),
+    'race': 'Non-Hispanic White',  # رایج‌ترین نژاد یا پیش‌فرض
+    'hyperlipidemia': 'No',
+    'diabetes': 'No'
+}])
+
+# محاسبه احتمال و شانس فقط بر اساس SSI
+ssi_prob = model.predict_proba(baseline_input)[0][1]
+ssi_odds = ssi_prob / (1 - ssi_prob)
+st.markdown(f"📌 **Odds of Infertility based on SSI only:** `{ssi_odds:.2f}` (probability = {ssi_prob:.2%})")
+
+
+
+
 
 
 # ---------- Show Odds Ratios Table ----------
