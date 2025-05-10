@@ -158,33 +158,75 @@ else:
 
 
 
+# پاک‌سازی و تغییر نام ستون‌ها
+df.rename(columns={
+    'AGE': 'age',
+    'Race': 'race',
+    'BMI': 'BMI',
+    'Waist Circumference': 'waist_circumference',
+    'Hyperlipidemia': 'hyperlipidemia',
+    'diabetes': 'diabetes',
+    'SSI': 'SSI',
+    'Female infertility': 'infertility'
+}, inplace=True)
 
-# --- Odds Ratios for Infertility Based on SSI Levels ---
+df = df[['SSI', 'infertility']].dropna()
 
-# تقسیم SSI به سطوح
-df['SSI_level'] = pd.qcut(df['SSI'], q=3, labels=['Low', 'Medium', 'High'])
+st.subheader("📈 Odds Ratio for Infertility Based on SII")
 
-# محاسبه odds برای هر سطح
-odds_by_group = df.groupby('SSI_level')['infertility'].agg(['sum', 'count'])
-odds_by_group['not_infertile'] = odds_by_group['count'] - odds_by_group['sum']
-odds_by_group['odds'] = odds_by_group['sum'] / odds_by_group['not_infertile']
+### 🔹 بخش 1: مدل پیوسته
+X_cont = sm.add_constant(df['SSI'])
+y = df['infertility']
+model_cont = sm.Logit(y, X_cont).fit(disp=False)
+or_cont = np.exp(model_cont.params['SSI'])
+p_val = model_cont.pvalues['SSI']
 
-# محاسبه Odds Ratio نسبت به سطح Low
-ref_odds = odds_by_group.loc['Low', 'odds']
-odds_by_group['odds_ratio_vs_low'] = odds_by_group['odds'] / ref_odds
+st.markdown(f"""
+**🔹 Continuous SII:**
+- Coefficient: {model_cont.params['SSI']:.4f}
+- **Odds Ratio (OR)**: {or_cont:.3f}
+- p-value: {p_val:.4f}
+""")
 
-# نمایش
-st.subheader("📊 Odds Ratios for Infertility Based on SSI Levels")
-st.dataframe(odds_by_group[['odds', 'odds_ratio_vs_low']].round(2))
+### 🔹 بخش 2: مدل چارک
+df['SII_quartile'] = pd.qcut(df['SSI'], q=4, labels=["Q1", "Q2", "Q3", "Q4"])
 
-# نمودار
-st.subheader("📈 Odds Ratio by SSI Level")
-fig4, ax4 = plt.subplots()
-sns.barplot(x=odds_by_group.index, y=odds_by_group['odds_ratio_vs_low'], ax=ax4)
-ax4.set_ylabel("Odds Ratio vs Low SSI")
-ax4.set_xlabel("SSI Level")
-ax4.set_title("Odds Ratio of Infertility by SSI Level")
-st.pyplot(fig4)
+# دامی‌کد برای چارک‌ها
+X_q = pd.get_dummies(df['SII_quartile'], drop_first=True)
+X_q = sm.add_constant(X_q)
+model_quartile = sm.Logit(y, X_q).fit(disp=False)
+or_q = np.exp(model_quartile.params)
+ci_q = model_quartile.conf_int()
+ci_q_exp = np.exp(ci_q)
+ci_q_exp.columns = ['CI Lower', 'CI Upper']
+
+# جدول ORها
+or_df = pd.DataFrame({
+    'Quartile': or_q.index,
+    'Odds Ratio': or_q.values,
+    'CI Lower': ci_q_exp['CI Lower'].values,
+    'CI Upper': ci_q_exp['CI Upper'].values,
+    'p-value': model_quartile.pvalues.values
+}).query("Quartile != 'const'")
+
+st.markdown("**🔹 Quartile-based Odds Ratios (SII):**")
+st.dataframe(or_df.set_index("Quartile").style.format("{:.2f}"))
+
+### 📊 نمودار OR چارک‌ها
+st.subheader("📊 Odds Ratios by SII Quartiles")
+fig, ax = plt.subplots()
+sns.pointplot(
+    data=or_df,
+    x='Quartile',
+    y='Odds Ratio',
+    join=False,
+    capsize=0.2,
+    errwidth=1.5,
+    yerr=(or_df['Odds Ratio'] - or_df['CI Lower'], or_df['CI Upper'] - or_df['Odds Ratio'])
+)
+ax.axhline(1, linestyle='--', color='gray')
+ax.set_title("Odds Ratios for Infertility by SII Quartiles")
+st.pyplot(fig)
 
 
 
