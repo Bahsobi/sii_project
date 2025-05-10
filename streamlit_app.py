@@ -159,37 +159,32 @@ else:
 
 
 
+# --- Odds Ratios for Infertility Based on SSI Levels ---
 
-# --- Odds Ratio based on SSI ---
+# تقسیم SSI به سطوح
+df['SSI_level'] = pd.qcut(df['SSI'], q=3, labels=['Low', 'Medium', 'High'])
 
-# مقدار SSI کاربر و مقدار مرجع (میانگین)
-ssi_user = ssi
-ssi_ref = df['SSI'].mean()
+# محاسبه odds برای هر سطح
+odds_by_group = df.groupby('SSI_level')['infertility'].agg(['sum', 'count'])
+odds_by_group['not_infertile'] = odds_by_group['count'] - odds_by_group['sum']
+odds_by_group['odds'] = odds_by_group['sum'] / odds_by_group['not_infertile']
 
-# ساخت دو ورودی مشابه فقط با تغییر SSI
-input_user_ssi = pd.DataFrame([{
-    'SSI': ssi_user,
-    'age': df['age'].mean(),
-    'BMI': df['BMI'].mean(),
-    'waist_circumference': df['waist_circumference'].mean(),
-    'race': 'Non-Hispanic White',
-    'hyperlipidemia': 'No',
-    'diabetes': 'No'
-}])
+# محاسبه Odds Ratio نسبت به سطح Low
+ref_odds = odds_by_group.loc['Low', 'odds']
+odds_by_group['odds_ratio_vs_low'] = odds_by_group['odds'] / ref_odds
 
-input_ref_ssi = input_user_ssi.copy()
-input_ref_ssi['SSI'] = ssi_ref
+# نمایش
+st.subheader("📊 Odds Ratios for Infertility Based on SSI Levels")
+st.dataframe(odds_by_group[['odds', 'odds_ratio_vs_low']].round(2))
 
-# پیش‌بینی احتمال
-prob_user = model.predict_proba(input_user_ssi)[0][1]
-prob_ref = model.predict_proba(input_ref_ssi)[0][1]
-
-# محاسبه odds و odds ratio
-odds_user = prob_user / (1 - prob_user)
-odds_ref = prob_ref / (1 - prob_ref)
-ssi_odds_ratio = odds_user / odds_ref
-
-st.markdown(f"🧮 **Odds Ratio of Infertility for SSI = {ssi_user} vs average SSI ({ssi_ref:.1f}):** `{ssi_odds_ratio:.2f}`")
+# نمودار
+st.subheader("📈 Odds Ratio by SSI Level")
+fig4, ax4 = plt.subplots()
+sns.barplot(x=odds_by_group.index, y=odds_by_group['odds_ratio_vs_low'], ax=ax4)
+ax4.set_ylabel("Odds Ratio vs Low SSI")
+ax4.set_xlabel("SSI Level")
+ax4.set_title("Odds Ratio of Infertility by SSI Level")
+st.pyplot(fig4)
 
 
 
