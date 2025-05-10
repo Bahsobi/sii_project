@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 from sklearn.linear_model import LogisticRegression
 import seaborn as sns
+import statsmodels.api as sm
 
 # ---------- Custom Styling ----------
 st.markdown(
@@ -146,104 +147,15 @@ user_input = pd.DataFrame([{
 
 prediction = model.predict(user_input)[0]
 probability = model.predict_proba(user_input)[0][1]
+odds_value = probability / (1 - probability)
 
 # ---------- Display Result ----------
 st.subheader("🔍 Infertility Prediction")
-odds_value = probability / (1 - probability)
 
 if prediction == 1:
-    st.error(f"⚠️ Predicted: *Infertile* with probability {probability:.2%}")
+    st.error(f"⚠️ Predicted: *Infertile* with probability {probability:.2%} (Odds: {odds_value:.2f})")
 else:
-    st.success(f"✅ Predicted: *Not Infertile* with probability {(1 - probability):.2%}")
-
-
-
-# پاک‌سازی و تغییر نام ستون‌ها
-df.rename(columns={
-    'AGE': 'age',
-    'Race': 'race',
-    'BMI': 'BMI',
-    'Waist Circumference': 'waist_circumference',
-    'Hyperlipidemia': 'hyperlipidemia',
-    'diabetes': 'diabetes',
-    'SSI': 'SSI',
-    'Female infertility': 'infertility'
-}, inplace=True)
-
-df = df[['SSI', 'infertility']].dropna()
-
-st.subheader("📈 Odds Ratio for Infertility Based on SII")
-
-### 🔹 بخش 1: مدل پیوسته
-X_cont = sm.add_constant(df['SSI'])
-y = df['infertility']
-model_cont = sm.Logit(y, X_cont).fit(disp=False)
-or_cont = np.exp(model_cont.params['SSI'])
-p_val = model_cont.pvalues['SSI']
-
-st.markdown(f"""
-**🔹 Continuous SII:**
-- Coefficient: {model_cont.params['SSI']:.4f}
-- **Odds Ratio (OR)**: {or_cont:.3f}
-- p-value: {p_val:.4f}
-""")
-
-### 🔹 بخش 2: مدل چارک
-df['SII_quartile'] = pd.qcut(df['SSI'], q=4, labels=["Q1", "Q2", "Q3", "Q4"])
-
-# دامی‌کد برای چارک‌ها
-X_q = pd.get_dummies(df['SII_quartile'], drop_first=True)
-X_q = sm.add_constant(X_q)
-model_quartile = sm.Logit(y, X_q).fit(disp=False)
-or_q = np.exp(model_quartile.params)
-ci_q = model_quartile.conf_int()
-ci_q_exp = np.exp(ci_q)
-ci_q_exp.columns = ['CI Lower', 'CI Upper']
-
-# جدول ORها
-or_df = pd.DataFrame({
-    'Quartile': or_q.index,
-    'Odds Ratio': or_q.values,
-    'CI Lower': ci_q_exp['CI Lower'].values,
-    'CI Upper': ci_q_exp['CI Upper'].values,
-    'p-value': model_quartile.pvalues.values
-}).query("Quartile != 'const'")
-
-st.markdown("**🔹 Quartile-based Odds Ratios (SII):**")
-st.dataframe(or_df.set_index("Quartile").style.format("{:.2f}"))
-
-### 📊 نمودار OR چارک‌ها
-st.subheader("📊 Odds Ratios by SII Quartiles")
-fig, ax = plt.subplots()
-sns.pointplot(
-    data=or_df,
-    x='Quartile',
-    y='Odds Ratio',
-    join=False,
-    capsize=0.2,
-    errwidth=1.5,
-    yerr=(or_df['Odds Ratio'] - or_df['CI Lower'], or_df['CI Upper'] - or_df['Odds Ratio'])
-)
-ax.axhline(1, linestyle='--', color='gray')
-ax.set_title("Odds Ratios for Infertility by SII Quartiles")
-st.pyplot(fig)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    st.success(f"✅ Predicted: *Not Infertile* with probability {(1 - probability):.2%} (Odds: {odds_value:.2f})")
 
 # ---------- Show Odds Ratios Table ----------
 st.subheader("📊 Odds Ratios for Infertility (Logistic Regression) (Excluding Race)")
@@ -258,6 +170,36 @@ st.subheader("📈 Bar Chart: Feature Importances")
 fig, ax = plt.subplots()
 sns.barplot(x='Importance', y='Feature', data=importance_df, ax=ax)
 st.pyplot(fig)
+
+# ---------- Odds Ratio for SII Quartiles ----------
+st.subheader("📉 Odds Ratios for Infertility by SII Quartiles")
+df_sii = df[['SSI', 'infertility']].copy()
+df_sii['SII_quartile'] = pd.qcut(df_sii['SSI'], 4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+X_q = pd.get_dummies(df_sii['SII_quartile'], drop_first=True)
+X_q = sm.add_constant(X_q)
+y_q = df_sii['infertility']
+model_q = sm.Logit(y_q, X_q).fit(disp=False)
+ors = np.exp(model_q.params)
+ci = model_q.conf_int()
+ci.columns = ['2.5%', '97.5%']
+ci = np.exp(ci)
+
+or_df = pd.DataFrame({
+    'Quartile': ors.index,
+    'Odds Ratio': ors.values,
+    'CI Lower': ci['2.5%'],
+    'CI Upper': ci['97.5%'],
+    'p-value': model_q.pvalues
+}).query("Quartile != 'const'")
+
+st.dataframe(or_df.set_index('Quartile').style.format("{:.2f}"))
+
+# ---------- Plot Quartile OR ----------
+fig3, ax3 = plt.subplots()
+sns.pointplot(data=or_df, x='Quartile', y='Odds Ratio', join=False, capsize=0.2, errwidth=1.5)
+ax3.axhline(1, linestyle='--', color='gray')
+ax3.set_title("Odds Ratios for Infertility by SII Quartiles")
+st.pyplot(fig3)
 
 # ---------- Data Summary ----------
 with st.expander("📋 Data Summary"):
