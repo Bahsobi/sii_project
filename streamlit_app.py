@@ -10,8 +10,7 @@ from xgboost import XGBClassifier
 from sklearn.linear_model import LogisticRegression
 import seaborn as sns
 
-
-
+# Custom styling
 st.markdown(
     """
     <style>
@@ -33,15 +32,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-
-
-
-
-
-
-
-# Show University of Tehran logo and app title centered at the top
+# University logo and title
 st.markdown(
     """
     <div style='display: flex; justify-content: center; align-items: center; flex-direction: column;'>
@@ -51,12 +42,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-# App title and description
 st.title('🤖🤰 Machine Learning Models APP for Advance Predicting Infertility Risk in Women')
 st.info('Predict the **Infertility** based on startup data using Multiple XGBoost.')
-
-
 
 # Load data
 @st.cache_data
@@ -66,7 +53,7 @@ def load_data():
 
 df = load_data()
 
-# Rename columns for consistency
+# Rename columns
 df.rename(columns={
     'AGE': 'age',
     'Race': 'race',
@@ -78,27 +65,24 @@ df.rename(columns={
     'Female infertility': 'infertility'
 }, inplace=True)
 
-# Define features
+# Select features
 features = ['SSI', 'age', 'BMI', 'waist_circumference', 'race', 'hyperlipidemia', 'diabetes']
 target = 'infertility'
-
-# Drop missing
 df = df[features + [target]].dropna()
 
 X = df[features]
 y = df[target]
 
-# Categorical and numerical features
 categorical_features = ['race', 'hyperlipidemia', 'diabetes']
 numerical_features = ['SSI', 'age', 'BMI', 'waist_circumference']
 
-# Preprocessing
+# Preprocessing pipeline
 preprocessor = ColumnTransformer([
     ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
     ('num', StandardScaler(), numerical_features)
 ])
 
-# XGBoost Pipeline
+# XGBoost pipeline
 model = Pipeline([
     ('prep', preprocessor),
     ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
@@ -107,47 +91,46 @@ model = Pipeline([
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
 model.fit(X_train, y_train)
 
-# Feature Importance from XGBoost
+# Feature importance (XGBoost)
 xgb_model = model.named_steps['xgb']
 encoder = model.named_steps['prep'].named_transformers_['cat']
 feature_names = encoder.get_feature_names_out(categorical_features).tolist() + numerical_features
 importances = xgb_model.feature_importances_
-importance_df = pd.DataFrame({
-    'Feature': feature_names,
-    'Importance': importances
-}).sort_values(by='Importance', ascending=False)
+importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances}).sort_values(by='Importance', ascending=False)
 
-# Logistic Regression for Odds Ratio
+# Logistic Regression (odds ratio)
 odds_pipeline = Pipeline([
     ('prep', preprocessor),
     ('logreg', LogisticRegression(max_iter=1000))
 ])
 odds_pipeline.fit(X_train, y_train)
 log_model = odds_pipeline.named_steps['logreg']
-odds_ratios = np.exp(log_model.coef_[0])
+log_odds = log_model.coef_[0]
+odds_ratios = np.exp(log_odds)
 
 odds_df = pd.DataFrame({
     'Feature': feature_names,
-    'Odds Ratio': odds_ratios
-}).sort_values(by='Odds Ratio', ascending=False)
+    'Odds Ratio (Infertility)': odds_ratios
+}).sort_values(by='Odds Ratio (Infertility)', ascending=False)
 
-# Sidebar Input
-st.sidebar.header("📝 Input Individual Data")
+# Sidebar for input
+temp_input = st.sidebar.container()
+temp_input.header("📝 Input Individual Data")
 
 race_options = [
     "Mexican American", "Other Hispanic", "Non-Hispanic White",
     "Non-Hispanic Black", "Non-Hispanic Asian", "Other Race - Including Multi-Racial"
 ]
 
-ssi = st.sidebar.number_input("SSI", min_value=0.0, value=10.0)
-age = st.sidebar.number_input("Age", min_value=15, max_value=60, value=30)
-bmi = st.sidebar.number_input("BMI", min_value=10.0, max_value=50.0, value=25.0)
-waist = st.sidebar.number_input("Waist Circumference", min_value=40.0, max_value=150.0, value=80.0)
-race = st.sidebar.selectbox("Race", race_options)
-hyperlipidemia = st.sidebar.selectbox("Hyperlipidemia", ['Yes', 'No'])
-diabetes = st.sidebar.selectbox("Diabetes", ['Yes', 'No'])
+ssi = temp_input.number_input("SSI", min_value=0.0, value=10.0)
+age = temp_input.number_input("Age", min_value=15, max_value=60, value=30)
+bmi = temp_input.number_input("BMI", min_value=10.0, max_value=50.0, value=25.0)
+waist = temp_input.number_input("Waist Circumference", min_value=40.0, max_value=150.0, value=80.0)
+race = temp_input.selectbox("Race", race_options)
+hyperlipidemia = temp_input.selectbox("Hyperlipidemia", ['Yes', 'No'])
+diabetes = temp_input.selectbox("Diabetes", ['Yes', 'No'])
 
-# Predict
+# Prediction
 user_input = pd.DataFrame([{
     'SSI': ssi,
     'age': age,
@@ -161,32 +144,32 @@ user_input = pd.DataFrame([{
 prediction = model.predict(user_input)[0]
 probability = model.predict_proba(user_input)[0][1]
 
-# Result
+# Output result
 st.subheader("🔍 Infertility Prediction")
 if prediction == 1:
     st.error(f"⚠️ Predicted: *Infertile* with probability {probability:.2%}")
 else:
     st.success(f"✅ Predicted: *Not Infertile* with probability {1 - probability:.2%}")
 
-# Show Odds Ratios
-st.subheader("📊 Odds Ratios (Logistic Regression)")
+# Odds Ratios (Logistic Regression)
+st.subheader("📊 Odds Ratios for Infertility (Logistic Regression)")
 st.dataframe(odds_df)
 
-# Show Feature Importance
-st.subheader("💡 Feature Importances (XGBoost)")
+# XGBoost Feature Importances
+st.subheader("💡 Feature Importances for Infertility (XGBoost)")
 st.dataframe(importance_df)
 
-# Plot Feature Importances
-st.subheader("📈 Bar Chart: Feature Importances")
+# Feature Importance Chart
+st.subheader("📈 Bar Chart: Feature Importances (XGBoost)")
 fig, ax = plt.subplots()
 sns.barplot(x='Importance', y='Feature', data=importance_df, ax=ax)
 st.pyplot(fig)
 
-# Show data summary
+# Data Summary
 with st.expander("📋 Data Summary"):
     st.write(df.describe())
 
-# Pie Chart of Target
+# Infertility Pie Chart
 st.subheader("🎯 Infertility Distribution")
 fig2, ax2 = plt.subplots()
 df['infertility'].value_counts().plot.pie(autopct='%1.1f%%', labels=['Not Infertile', 'Infertile'], ax=ax2)
