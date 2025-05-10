@@ -175,9 +175,12 @@ st.pyplot(fig)
 st.subheader("📉 Odds Ratios for Infertility by SII Quartiles")
 df_sii = df[['SSI', 'infertility']].copy()
 df_sii['SII_quartile'] = pd.qcut(df_sii['SSI'], 4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+
+# تبدیل به داده عددی برای مدل logit
 X_q = pd.get_dummies(df_sii['SII_quartile'], drop_first=True)
-X_q = sm.add_constant(X_q)
-y_q = df_sii['infertility']
+X_q = sm.add_constant(X_q).astype(float)
+y_q = df_sii['infertility'].astype(float)
+
 model_q = sm.Logit(y_q, X_q).fit(disp=False)
 ors = np.exp(model_q.params)
 ci = model_q.conf_int()
