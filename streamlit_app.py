@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
@@ -18,10 +17,11 @@ def load_data():
 
 df = load_data()
 
-st.subheader("نمایش داده‌های اولیه")
-st.dataframe(df.head())
+# نمایش ستون‌ها برای رفع خطا
+st.subheader("ستون‌های موجود در داده‌ها")
+st.write(df.columns.tolist())
 
-# اصلاح نام ستون‌ها برای هماهنگی
+# تغییر نام ستون‌ها برای یکدستی
 df.rename(columns={
     'AGE': 'age',
     'Race': 'race',
@@ -33,11 +33,11 @@ df.rename(columns={
     'Female infertility': 'infertility'
 }, inplace=True)
 
-# انتخاب ویژگی‌ها و هدف
+# تعریف ویژگی‌ها و هدف
 features = ['SSI', 'age', 'BMI', 'waist_circumference', 'race', 'hyperlipidemia', 'diabetes']
 target = 'infertility'
 
-# حذف مقادیر گمشده
+# فیلتر کردن فقط ستون‌های موردنیاز و حذف مقادیر گمشده
 df = df[features + [target]].dropna()
 
 X = df[features]
@@ -78,7 +78,7 @@ race = st.sidebar.selectbox("Race", race_options)
 hyperlipidemia = st.sidebar.selectbox("Hyperlipidemia", ['Yes', 'No'])
 diabetes = st.sidebar.selectbox("Diabetes", ['Yes', 'No'])
 
-# آماده‌سازی ورودی
+# آماده‌سازی ورودی کاربر
 user_input = pd.DataFrame([{
     'SSI': ssi,
     'age': age,
