@@ -13,7 +13,8 @@ st.title("🤰 پیش‌بینی ناباروری با XGBoost")
 # بارگذاری داده‌ها
 @st.cache_data
 def load_data():
-    return pd.read_csv("/mnt/data/MY_ ssi.csv")
+    url = "https://raw.githubusercontent.com/Bahsobi/sii_project/main/MY_%20ssi.csv"
+    return pd.read_csv(url)
 
 df = load_data()
 
