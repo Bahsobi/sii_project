@@ -6,8 +6,54 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
-# App title
-st.title("🤰 Infertility Prediction using XGBoost")
+
+
+st.markdown(
+    """
+    <style>
+        body {
+            background-color: #e6f4ea;
+            color: #1e1e1e;
+        }
+        .stApp {
+            background-color: #e6f4ea;
+        }
+        .css-18e3th9, .css-1d391kg {
+            background-color: #d8efe0 !important;
+        }
+        .stSidebar {
+            background-color: #c8e6c9;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+
+
+
+
+
+
+
+# Show University of Tehran logo and app title centered at the top
+st.markdown(
+    """
+    <div style='display: flex; justify-content: center; align-items: center; flex-direction: column;'>
+        <img src='https://upload.wikimedia.org/wikipedia/commons/8/83/TUMS_Signature_Variation_1_BLUE.png' width='200' style='margin-bottom: 10px;'/>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# App title and description
+st.title('🤖 Machine Learning Models APP for Advance Predicting Infertility Risk in Women using XGBoost')
+st.info('Predict the **Profit** based on startup data using Multiple Linear Regression.')
+
+
+
 
 # Load dataset
 @st.cache_data
