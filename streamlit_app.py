@@ -7,54 +7,63 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
-# --- عنوان ---
-st.title("🤰 پیش‌بینی ناباروری زنان با XGBoost")
+# عنوان اپ
+st.title("🤰 پیش‌بینی ناباروری با XGBoost")
 
-st.markdown("""
-این اپلیکیشن با استفاده از الگوریتم **XGBoost** و ویژگی‌های پزشکی، احتمال ناباروری را پیش‌بینی می‌کند.
-""")
+# نگاشت کد نژاد به برچسب
+race_map = {
+    1: "Mexican American",
+    2: "Other Hispanic",
+    3: "Non-Hispanic White",
+    4: "Non-Hispanic Black",
+    5: "Non-Hispanic Asian",
+    6: "Other Race - Including Multi-Racial"
+}
+race_map_inv = {v: k for k, v in race_map.items()}
 
-# --- بارگذاری داده‌ها ---
+# بارگذاری داده‌ها
 @st.cache_data
 def load_data():
-    url = "https://raw.githubusercontent.com/Bahsobi/sii_project/main/MY_%20ssi.csv"
-    df = pd.read_csv(url)
-    return df
+    return pd.read_excel("/mnt/data/cleaned_data (3).xlsx")
 
 df = load_data()
 
-# --- نمایش داده‌ها ---
-st.subheader("🔍 پیش‌نمایش داده‌ها")
+# جایگزینی کدهای نژاد با لیبل برای نمایش بهتر
+df['Race'] = df['Race'].map(race_map)
+
+st.subheader("📊 نمایش داده‌های اولیه")
 st.dataframe(df.head())
 
-# --- آماده‌سازی داده‌ها ---
-features = ['SSI', 'age', 'BMI', 'waist circumference', 'race', 'hyperlipidemia', 'diabetes']
-target = 'infertility'
+# انتخاب ویژگی‌ها و هدف
+features = ['SSI', 'AGE', 'BMI', 'Waist Circumference', 'Race', 'Hyperlipidemia', 'diabetes']
+target = 'Infertility'
 
+# حذف مقادیر گمشده
 df = df[features + [target]].dropna()
 
 X = df[features]
 y = df[target]
 
-# --- پیش‌پردازش ---
-categorical_features = ['race', 'hyperlipidemia', 'diabetes']
-numerical_features = ['SSI', 'age', 'BMI', 'waist circumference']
+# پیش‌پردازش داده‌ها
+categorical_features = ['Race', 'Hyperlipidemia', 'diabetes']
+numerical_features = ['SSI', 'AGE', 'BMI', 'Waist Circumference']
 
 preprocessor = ColumnTransformer([
     ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
     ('num', StandardScaler(), numerical_features)
 ])
 
+# مدل نهایی با XGBoost
 model = Pipeline([
     ('prep', preprocessor),
     ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
 ])
 
-# --- آموزش مدل ---
-X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
+# آموزش مدل
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.2, random_state=42)
 model.fit(X_train, y_train)
 
-# --- فرم ورودی کاربر ---
+# فرم ورودی کاربر
 st.sidebar.header("📝 وارد کردن اطلاعات فردی")
 
 ssi = st.sidebar.number_input("SSI", min_value=0.0, value=10.0)
@@ -62,31 +71,30 @@ age = st.sidebar.number_input("Age", min_value=15, max_value=60, value=30)
 bmi = st.sidebar.number_input("BMI", min_value=10.0, max_value=50.0, value=25.0)
 waist = st.sidebar.number_input("Waist Circumference", min_value=40.0, max_value=150.0, value=80.0)
 
-race_options = sorted(df['race'].dropna().unique())
-race = st.sidebar.selectbox("Race", race_options)
+race_label = st.sidebar.selectbox("Race", list(race_map.values()))
+race = race_label
 
 hyperlipidemia = st.sidebar.selectbox("Hyperlipidemia", ['Yes', 'No'])
 diabetes = st.sidebar.selectbox("Diabetes", ['Yes', 'No'])
 
-# --- آماده‌سازی ورودی ---
-input_data = pd.DataFrame([{
+# ساخت دیتافریم ورودی
+user_input = pd.DataFrame([{
     'SSI': ssi,
-    'age': age,
+    'AGE': age,
     'BMI': bmi,
-    'waist circumference': waist,
-    'race': race,
-    'hyperlipidemia': hyperlipidemia,
+    'Waist Circumference': waist,
+    'Race': race,
+    'Hyperlipidemia': hyperlipidemia,
     'diabetes': diabetes
 }])
 
-# --- پیش‌بینی ---
-prediction = model.predict(input_data)[0]
-probability = model.predict_proba(input_data)[0][1]
+# پیش‌بینی
+prediction = model.predict(user_input)[0]
+probability = model.predict_proba(user_input)[0][1]
 
-# --- نمایش نتیجه ---
-st.subheader("🔎 نتیجه پیش‌بینی")
-
+# نمایش خروجی
+st.subheader("🔍 پیش‌بینی ناباروری")
 if prediction == 1:
-    st.error(f"⚠️ احتمال ناباروری: {probability:.1%}")
+    st.error(f"⚠️ پیش‌بینی شده: *ناباروری* با احتمال {probability:.2%}")
 else:
-    st.success(f"✅ احتمال عدم ناباروری: {(1 - probability):.1%}")
+    st.success(f"✅ پیش‌بینی شده: *عدم ناباروری* با احتمال {1 - probability:.2%}")
