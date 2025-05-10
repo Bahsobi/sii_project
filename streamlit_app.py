@@ -7,31 +7,36 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
-# عنوان
-st.title("🤰 پیش‌بینی ناباروری با XGBoost")
+# --- عنوان ---
+st.title("🤰 پیش‌بینی ناباروری زنان با XGBoost")
 
-# بارگذاری داده‌ها
+st.markdown("""
+این اپلیکیشن با استفاده از الگوریتم **XGBoost** و ویژگی‌های پزشکی، احتمال ناباروری را پیش‌بینی می‌کند.
+""")
+
+# --- بارگذاری داده‌ها ---
 @st.cache_data
 def load_data():
     url = "https://raw.githubusercontent.com/Bahsobi/sii_project/main/MY_%20ssi.csv"
-    return pd.read_csv(url)
+    df = pd.read_csv(url)
+    return df
 
 df = load_data()
 
-st.subheader("نمایش داده‌های اولیه")
+# --- نمایش داده‌ها ---
+st.subheader("🔍 پیش‌نمایش داده‌ها")
 st.dataframe(df.head())
 
-# انتخاب ویژگی‌ها و هدف
+# --- آماده‌سازی داده‌ها ---
 features = ['SSI', 'age', 'BMI', 'waist circumference', 'race', 'hyperlipidemia', 'diabetes']
 target = 'infertility'
 
-# حذف مقادیر گمشده
 df = df[features + [target]].dropna()
 
 X = df[features]
 y = df[target]
 
-# پیش‌پردازش
+# --- پیش‌پردازش ---
 categorical_features = ['race', 'hyperlipidemia', 'diabetes']
 numerical_features = ['SSI', 'age', 'BMI', 'waist circumference']
 
@@ -40,17 +45,16 @@ preprocessor = ColumnTransformer([
     ('num', StandardScaler(), numerical_features)
 ])
 
-# ساخت مدل نهایی
 model = Pipeline([
     ('prep', preprocessor),
-    ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss'))
+    ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
 ])
 
-# آموزش مدل
+# --- آموزش مدل ---
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
 model.fit(X_train, y_train)
 
-# فرم ورودی کاربر
+# --- فرم ورودی کاربر ---
 st.sidebar.header("📝 وارد کردن اطلاعات فردی")
 
 ssi = st.sidebar.number_input("SSI", min_value=0.0, value=10.0)
@@ -64,8 +68,8 @@ race = st.sidebar.selectbox("Race", race_options)
 hyperlipidemia = st.sidebar.selectbox("Hyperlipidemia", ['Yes', 'No'])
 diabetes = st.sidebar.selectbox("Diabetes", ['Yes', 'No'])
 
-# آماده‌سازی ورودی برای پیش‌بینی
-user_input = pd.DataFrame([{
+# --- آماده‌سازی ورودی ---
+input_data = pd.DataFrame([{
     'SSI': ssi,
     'age': age,
     'BMI': bmi,
@@ -75,13 +79,14 @@ user_input = pd.DataFrame([{
     'diabetes': diabetes
 }])
 
-# پیش‌بینی
-prediction = model.predict(user_input)[0]
-probability = model.predict_proba(user_input)[0][1]
+# --- پیش‌بینی ---
+prediction = model.predict(input_data)[0]
+probability = model.predict_proba(input_data)[0][1]
 
-# نمایش نتیجه
-st.subheader("🔍 پیش‌بینی ناباروری")
+# --- نمایش نتیجه ---
+st.subheader("🔎 نتیجه پیش‌بینی")
+
 if prediction == 1:
-    st.error(f"⚠️ پیش‌بینی شده: *ناباروری* با احتمال {probability:.2%}")
+    st.error(f"⚠️ احتمال ناباروری: {probability:.1%}")
 else:
-    st.success(f"✅ پیش‌بینی شده: *عدم ناباروری* با احتمال {1 - probability:.2%}")
+    st.success(f"✅ احتمال عدم ناباروری: {(1 - probability):.1%}")
