@@ -6,10 +6,10 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
-# عنوان
-st.title("🤰 پیش‌بینی ناباروری با XGBoost")
+# App title
+st.title("🤰 Infertility Prediction using XGBoost")
 
-# بارگذاری داده‌ها
+# Load dataset
 @st.cache_data
 def load_data():
     url = "https://raw.githubusercontent.com/Bahsobi/sii_project/main/cleaned_data%20(3).xlsx"
@@ -17,11 +17,11 @@ def load_data():
 
 df = load_data()
 
-# نمایش ستون‌ها برای رفع خطا
-st.subheader("ستون‌های موجود در داده‌ها")
+# Display column names for debugging
+st.subheader("Available Columns in the Dataset")
 st.write(df.columns.tolist())
 
-# تغییر نام ستون‌ها برای یکدستی
+# Rename columns for consistency
 df.rename(columns={
     'AGE': 'age',
     'Race': 'race',
@@ -33,17 +33,17 @@ df.rename(columns={
     'Female infertility': 'infertility'
 }, inplace=True)
 
-# تعریف ویژگی‌ها و هدف
+# Feature and target selection
 features = ['SSI', 'age', 'BMI', 'waist_circumference', 'race', 'hyperlipidemia', 'diabetes']
 target = 'infertility'
 
-# فیلتر کردن فقط ستون‌های موردنیاز و حذف مقادیر گمشده
+# Filter and clean data
 df = df[features + [target]].dropna()
 
 X = df[features]
 y = df[target]
 
-# پیش‌پردازش
+# Preprocessing
 categorical_features = ['race', 'hyperlipidemia', 'diabetes']
 numerical_features = ['SSI', 'age', 'BMI', 'waist_circumference']
 
@@ -52,18 +52,18 @@ preprocessor = ColumnTransformer([
     ('num', StandardScaler(), numerical_features)
 ])
 
-# ساخت مدل
+# Define model pipeline
 model = Pipeline([
     ('prep', preprocessor),
     ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
 ])
 
-# آموزش مدل
+# Train model
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
 model.fit(X_train, y_train)
 
-# فرم ورودی کاربر
-st.sidebar.header("📝 وارد کردن اطلاعات فردی")
+# Sidebar for user input
+st.sidebar.header("📝 Enter Personal Information")
 
 ssi = st.sidebar.number_input("SSI", min_value=0.0, value=10.0)
 age = st.sidebar.number_input("Age", min_value=15, max_value=60, value=30)
@@ -78,7 +78,7 @@ race = st.sidebar.selectbox("Race", race_options)
 hyperlipidemia = st.sidebar.selectbox("Hyperlipidemia", ['Yes', 'No'])
 diabetes = st.sidebar.selectbox("Diabetes", ['Yes', 'No'])
 
-# آماده‌سازی ورودی کاربر
+# Create input DataFrame
 user_input = pd.DataFrame([{
     'SSI': ssi,
     'age': age,
@@ -89,13 +89,13 @@ user_input = pd.DataFrame([{
     'diabetes': diabetes
 }])
 
-# پیش‌بینی
+# Make prediction
 prediction = model.predict(user_input)[0]
 probability = model.predict_proba(user_input)[0][1]
 
-# نمایش نتیجه
-st.subheader("🔍 پیش‌بینی ناباروری")
+# Display result
+st.subheader("🔍 Infertility Prediction")
 if prediction == 1:
-    st.error(f"⚠️ پیش‌بینی شده: *ناباروری* با احتمال {probability:.2%}")
+    st.error(f"⚠️ Predicted: *Infertile* with probability {probability:.2%}")
 else:
-    st.success(f"✅ پیش‌بینی شده: *عدم ناباروری* با احتمال {1 - probability:.2%}")
+    st.success(f"✅ Predicted: *Not Infertile* with probability {1 - probability:.2%}")
