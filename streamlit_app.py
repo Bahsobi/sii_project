@@ -3,11 +3,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preproceSIIng import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from xgboost import XGBClaSIIfier
-from sklearn.linear_model import LogisticRegreSIIon
+from xgboost import XGBClassifier
+from sklearn.linear_model import LogisticRegression
 import seaborn as sns
 import statsmodels.api as sm
 
@@ -15,15 +15,8 @@ import statsmodels.api as sm
 st.markdown(
     """
     <style>
-        body {
-            background-color: #e6f4ea;
-            color: #1e1e1e;
-        }
         .stApp {
             background-color: #e6f4ea;
-        }
-        .css-18e3th9, .css-1d391kg {
-            background-color: #d8efe0 !important;
         }
         .stSidebar {
             background-color: #c8e6c9;
@@ -43,13 +36,13 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.title('🤖🤰 Machine Learning Models APP for Advance Predicting Infertility Risk in Women')
-st.info('Predict the **Infertility** based on health data using XGBoost and Logistic RegreSIIon.')
+st.title('🤖🤰 Machine Learning Models APP for Advanced Predicting Infertility Risk in Women')
+st.info('Predict the **Infertility** based on health data using XGBoost and Logistic Regression.')
 
 # ---------- Load Data ----------
 @st.cache_data
 def load_data():
-    url = "https://github.com/Bahsobi/sii_project/blob/main/cleaned_data%20(3)%20(1).xlsx"
+    url = "https://github.com/Bahsobi/sii_project/raw/main/cleaned_data%20(3)%20(1).xlsx"
     return pd.read_excel(url)
 
 df = load_data()
@@ -74,7 +67,7 @@ df = df[features + [target]].dropna()
 X = df[features]
 y = df[target]
 
-# ---------- PreproceSIIng ----------
+# ---------- Preprocessing ----------
 categorical_features = ['race', 'hyperlipidemia', 'diabetes']
 numerical_features = ['SII', 'age', 'BMI', 'waist_circumference']
 
@@ -86,13 +79,13 @@ preprocessor = ColumnTransformer([
 # ---------- XGBoost Pipeline ----------
 model = Pipeline([
     ('prep', preprocessor),
-    ('xgb', XGBClaSIIfier(use_label_encoder=False, eval_metric='logloss', random_state=42))
+    ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
 ])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
 model.fit(X_train, y_train)
 
-# ---------- Feature Importance from XGBoost ----------
+# ---------- Feature Importance ----------
 xgb_model = model.named_steps['xgb']
 encoder = model.named_steps['prep'].named_transformers_['cat']
 feature_names = encoder.get_feature_names_out(categorical_features).tolist() + numerical_features
@@ -102,10 +95,10 @@ importance_df = pd.DataFrame({
     'Importance': importances
 }).sort_values(by='Importance', ascending=False)
 
-# ---------- Logistic RegreSIIon for Odds Ratio ----------
+# ---------- Logistic Regression for Odds Ratio ----------
 odds_pipeline = Pipeline([
     ('prep', preprocessor),
-    ('logreg', LogisticRegreSIIon(max_iter=1000))
+    ('logreg', LogisticRegression(max_iter=1000))
 ])
 odds_pipeline.fit(X_train, y_train)
 log_model = odds_pipeline.named_steps['logreg']
@@ -116,7 +109,6 @@ odds_df = pd.DataFrame({
     'Odds Ratio': odds_ratios
 }).sort_values(by='Odds Ratio', ascending=False)
 
-# 🔴 حذف ویژگی‌های نژادی از جدول Odds Ratios
 filtered_odds_df = odds_df[~odds_df['Feature'].str.contains("race")]
 
 # ---------- Sidebar User Input ----------
@@ -165,28 +157,24 @@ else:
         🎲 **Odds of Infertility:** {odds_value:.2f}
     """)
 
-
-
-# ---------- Show Odds Ratios Table ----------
-st.subheader("📊 Odds Ratios for Infertility (Logistic RegreSIIon) (Excluding Race)")
+# ---------- Show Tables ----------
+st.subheader("📊 Odds Ratios for Infertility (Logistic Regression) (Excluding Race)")
 st.dataframe(filtered_odds_df)
 
-# ---------- Show XGBoost Feature Importance Table ----------
 st.subheader("💡 Feature Importances (XGBoost)")
 st.dataframe(importance_df)
 
-# ---------- Plot XGBoost Feature Importances ----------
+# ---------- Plot Feature Importances ----------
 st.subheader("📈 Bar Chart: Feature Importances")
 fig, ax = plt.subplots()
 sns.barplot(x='Importance', y='Feature', data=importance_df, ax=ax)
 st.pyplot(fig)
 
-# ---------- Odds Ratio for SII Quartiles ----------
+# ---------- Quartile Odds Ratio for SII ----------
 st.subheader("📉 Odds Ratios for Infertility by SII Quartiles")
 df_sii = df[['SII', 'infertility']].copy()
 df_sii['SII_quartile'] = pd.qcut(df_sii['SII'], 4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
 
-# تبدیل به داده عددی برای مدل logit
 X_q = pd.get_dummies(df_sii['SII_quartile'], drop_first=True)
 X_q = sm.add_constant(X_q).astype(float)
 y_q = df_sii['infertility'].astype(float)
@@ -207,18 +195,16 @@ or_df = pd.DataFrame({
 
 st.dataframe(or_df.set_index('Quartile').style.format("{:.2f}"))
 
-# ---------- Plot Quartile OR ----------
 fig3, ax3 = plt.subplots()
 sns.pointplot(data=or_df, x='Quartile', y='Odds Ratio', join=False, capsize=0.2, errwidth=1.5)
 ax3.axhline(1, linestyle='--', color='gray')
 ax3.set_title("Odds Ratios for Infertility by SII Quartiles")
 st.pyplot(fig3)
 
-# ---------- Data Summary ----------
+# ---------- Summary ----------
 with st.expander("📋 Data Summary"):
     st.write(df.describe())
 
-# ---------- Pie Chart: Infertility Distribution ----------
 st.subheader("🎯 Infertility Distribution")
 fig2, ax2 = plt.subplots()
 df['infertility'].value_counts().plot.pie(
@@ -226,6 +212,5 @@ df['infertility'].value_counts().plot.pie(
 ax2.set_ylabel("")
 st.pyplot(fig2)
 
-# ---------- Sample Data ----------
 with st.expander("🔍 Sample Data (First 10 Rows)"):
     st.dataframe(df.head(10))
