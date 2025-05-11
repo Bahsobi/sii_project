@@ -3,11 +3,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preproceSIIng import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from xgboost import XGBClassifier
-from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClaSIIfier
+from sklearn.linear_model import LogisticRegreSIIon
 import seaborn as sns
 import statsmodels.api as sm
 
@@ -44,7 +44,7 @@ st.markdown(
 )
 
 st.title('🤖🤰 Machine Learning Models APP for Advance Predicting Infertility Risk in Women')
-st.info('Predict the **Infertility** based on health data using XGBoost and Logistic Regression.')
+st.info('Predict the **Infertility** based on health data using XGBoost and Logistic RegreSIIon.')
 
 # ---------- Load Data ----------
 @st.cache_data
@@ -62,21 +62,21 @@ df.rename(columns={
     'Waist Circumference': 'waist_circumference',
     'Hyperlipidemia': 'hyperlipidemia',
     'diabetes': 'diabetes',
-    'SII': 'SSI',
+    'SII': 'SII',
     'Female infertility': 'infertility'
 }, inplace=True)
 
 # ---------- Features & Target ----------
-features = ['SSI', 'age', 'BMI', 'waist_circumference', 'race', 'hyperlipidemia', 'diabetes']
+features = ['SII', 'age', 'BMI', 'waist_circumference', 'race', 'hyperlipidemia', 'diabetes']
 target = 'infertility'
 df = df[features + [target]].dropna()
 
 X = df[features]
 y = df[target]
 
-# ---------- Preprocessing ----------
+# ---------- PreproceSIIng ----------
 categorical_features = ['race', 'hyperlipidemia', 'diabetes']
-numerical_features = ['SSI', 'age', 'BMI', 'waist_circumference']
+numerical_features = ['SII', 'age', 'BMI', 'waist_circumference']
 
 preprocessor = ColumnTransformer([
     ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
@@ -86,7 +86,7 @@ preprocessor = ColumnTransformer([
 # ---------- XGBoost Pipeline ----------
 model = Pipeline([
     ('prep', preprocessor),
-    ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
+    ('xgb', XGBClaSIIfier(use_label_encoder=False, eval_metric='logloss', random_state=42))
 ])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
@@ -102,10 +102,10 @@ importance_df = pd.DataFrame({
     'Importance': importances
 }).sort_values(by='Importance', ascending=False)
 
-# ---------- Logistic Regression for Odds Ratio ----------
+# ---------- Logistic RegreSIIon for Odds Ratio ----------
 odds_pipeline = Pipeline([
     ('prep', preprocessor),
-    ('logreg', LogisticRegression(max_iter=1000))
+    ('logreg', LogisticRegreSIIon(max_iter=1000))
 ])
 odds_pipeline.fit(X_train, y_train)
 log_model = odds_pipeline.named_steps['logreg']
@@ -126,7 +126,7 @@ race_options = [
     "Non-Hispanic Black", "Non-Hispanic Asian", "Other Race - Including Multi-Racial"
 ]
 
-ssi = st.sidebar.number_input("SSI", min_value=0.0, value=10.0)
+SII = st.sidebar.number_input("SII", min_value=0.0, value=10.0)
 age = st.sidebar.number_input("Age", min_value=15, max_value=60, value=30)
 bmi = st.sidebar.number_input("BMI", min_value=10.0, max_value=50.0, value=25.0)
 waist = st.sidebar.number_input("Waist Circumference", min_value=40.0, max_value=150.0, value=80.0)
@@ -136,7 +136,7 @@ diabetes = st.sidebar.selectbox("Diabetes", ['Yes', 'No'])
 
 # ---------- Prediction ----------
 user_input = pd.DataFrame([{
-    'SSI': ssi,
+    'SII': SII,
     'age': age,
     'BMI': bmi,
     'waist_circumference': waist,
@@ -168,7 +168,7 @@ else:
 
 
 # ---------- Show Odds Ratios Table ----------
-st.subheader("📊 Odds Ratios for Infertility (Logistic Regression) (Excluding Race)")
+st.subheader("📊 Odds Ratios for Infertility (Logistic RegreSIIon) (Excluding Race)")
 st.dataframe(filtered_odds_df)
 
 # ---------- Show XGBoost Feature Importance Table ----------
@@ -183,8 +183,8 @@ st.pyplot(fig)
 
 # ---------- Odds Ratio for SII Quartiles ----------
 st.subheader("📉 Odds Ratios for Infertility by SII Quartiles")
-df_sii = df[['SSI', 'infertility']].copy()
-df_sii['SII_quartile'] = pd.qcut(df_sii['SSI'], 4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+df_sii = df[['SII', 'infertility']].copy()
+df_sii['SII_quartile'] = pd.qcut(df_sii['SII'], 4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
 
 # تبدیل به داده عددی برای مدل logit
 X_q = pd.get_dummies(df_sii['SII_quartile'], drop_first=True)
