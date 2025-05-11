@@ -49,7 +49,7 @@ st.info('Predict the **Infertility** based on health data using XGBoost and Logi
 # ---------- Load Data ----------
 @st.cache_data
 def load_data():
-    url = "https://raw.githubusercontent.com/Bahsobi/sii_project/main/cleaned_data%20(3).xlsx"
+    url = "https://github.com/Bahsobi/sii_project/blob/main/cleaned_data%20(3)%20(1).xlsx"
     return pd.read_excel(url)
 
 df = load_data()
