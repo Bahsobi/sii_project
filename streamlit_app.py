@@ -153,6 +153,13 @@ odds_value = probability / (1 - probability)
 st.subheader("🔍 Infertility Prediction")
 
 if prediction == 1:
+    st.error(f"⚠️ Predicted: *Infertile* — Probability: {probability:.2%} — Odds of Infertility: {odds_value:.2f}")
+else:
+    st.success(f"✅ Predicted: *Not Infertile* — Probability of Infertility: {probability:.2%} — Odds of Infertility: {odds_value:.2f}")
+
+
+
+if prediction == 1:
     st.error(f"⚠️ Predicted: *Infertile* with probability {probability:.2%} (Odds: {odds_value:.2f})")
 else:
     st.success(f"✅ Predicted: *Not Infertile* with probability {(1 - probability):.2%} (Odds: {odds_value:.2f})")
