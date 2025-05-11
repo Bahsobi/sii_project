@@ -62,7 +62,7 @@ df.rename(columns={
     'Waist Circumference': 'waist_circumference',
     'Hyperlipidemia': 'hyperlipidemia',
     'diabetes': 'diabetes',
-    'SSI': 'SSI',
+    'SII': 'SSI',
     'Female infertility': 'infertility'
 }, inplace=True)
 
